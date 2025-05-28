@@ -8,7 +8,7 @@ import requests
 import schedule
 import time
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import Flask, Response, jsonify
 from feedgen.feed import FeedGenerator
 import logging
@@ -101,10 +101,35 @@ class RansomwareRSSService:
             response.raise_for_status()
             all_victims = response.json()
 
-            # 只返回新的条目
-            new_victims = [v for v in all_victims if v.get("url") not in existing_urls]
+            # 计算一周前的时间
+            one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+
+            # 过滤掉一周前的数据和已存在的数据
+            new_victims = []
+            for victim in all_victims:
+                url = victim.get("url")
+                if not url or url in existing_urls:
+                    continue
+                
+                # 解析discovered时间
+                discovered = victim.get("discovered")
+                if discovered:
+                    try:
+                        # 尝试解析时间字符串
+                        if "T" in discovered:
+                            victim_time = datetime.fromisoformat(discovered.replace("Z", "+00:00"))
+                        else:
+                            victim_time = datetime.fromisoformat(discovered + "+00:00")
+                        
+                        # 只保留一周内的数据
+                        if victim_time >= one_week_ago:
+                            new_victims.append(victim)
+                    except:
+                        # 如果时间解析失败，跳过该条数据
+                        continue
+
             logger.info(
-                f"获取到 {len(all_victims)} 条受害者数据，其中 {len(new_victims)} 条为新数据"
+                f"获取到 {len(all_victims)} 条受害者数据，其中 {len(new_victims)} 条为新数据且在一周内"
             )
             return new_victims
         except Exception as e:
@@ -123,10 +148,35 @@ class RansomwareRSSService:
             response.raise_for_status()
             all_attacks = response.json()
 
-            # 只返回新的条目
-            new_attacks = [a for a in all_attacks if a.get("url") not in existing_urls]
+            # 计算一周前的时间
+            one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+
+            # 过滤掉一周前的数据和已存在的数据
+            new_attacks = []
+            for attack in all_attacks:
+                url = attack.get("url")
+                if not url or url in existing_urls:
+                    continue
+                
+                # 解析added时间
+                added = attack.get("added")
+                if added:
+                    try:
+                        # 尝试解析时间字符串
+                        if "T" in added:
+                            attack_time = datetime.fromisoformat(added.replace("Z", "+00:00"))
+                        else:
+                            attack_time = datetime.fromisoformat(added + "+00:00")
+                        
+                        # 只保留一周内的数据
+                        if attack_time >= one_week_ago:
+                            new_attacks.append(attack)
+                    except:
+                        # 如果时间解析失败，跳过该条数据
+                        continue
+
             logger.info(
-                f"获取到 {len(all_attacks)} 条网络攻击数据，其中 {len(new_attacks)} 条为新数据"
+                f"获取到 {len(all_attacks)} 条网络攻击数据，其中 {len(new_attacks)} 条为新数据且在一周内"
             )
             return new_attacks
         except Exception as e:
@@ -196,9 +246,9 @@ class RansomwareRSSService:
 
         # 生成摘要
         if country in CHINA_COUNTRY_CODES:
-            summary = f"【勒索软件攻击】{country_name}{industry_desc}{company_name}遭到{group_name}勒索软件组织攻击。"
+            summary = f"【勒索】{country_name}{industry_desc}{company_name}遭到{group_name}勒索软件组织攻击。"
         else:
-            summary = f"【勒索软件攻击】{industry_desc}{company_name}遭到{group_name}勒索软件组织攻击。"
+            summary = f"【勒索】{industry_desc}{company_name}遭到{group_name}勒索软件组织攻击。"
 
         summary += f"该攻击于{discovered}被发现，{risk_desc}。"
         summary += f"此次攻击再次凸显了网络安全威胁的严重性，相关机构应加强防护措施。"
@@ -399,7 +449,7 @@ class RansomwareRSSService:
 
             # 根据类型设置标题前缀
             if item["type"] == "victim":
-                title_prefix = "【勒索软件攻击】"
+                title_prefix = "【勒索】"
                 if item["country"]:
                     country_name = COUNTRY_NAMES.get(item["country"], item["country"])
                     title_prefix += f"[{country_name}] "
