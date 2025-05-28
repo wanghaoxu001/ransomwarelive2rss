@@ -1,0 +1,7 @@
+flask
+requests
+feedgen
+schedule
+python-dateutil
+pytz
+openai

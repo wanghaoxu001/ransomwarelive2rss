@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  ransomware-rss:
+    build: .
+    container_name: ransomware-rss-service
+    ports:
+      - "15000:15000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_PATH=/app/data/ransomware_data.db
+      - HOST=0.0.0.0
+      - PORT=15000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:15000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ransomware-network
+
+networks:
+  ransomware-network:
+    driver: bridge
+
+volumes:
+  ransomware-data:
+    driver: local 
