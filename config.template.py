@@ -52,7 +52,7 @@ LOG_LEVEL = "INFO"  # 日志级别：DEBUG, INFO, WARNING, ERROR, CRITICAL
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
 # 新闻摘要模板
-VICTIM_SUMMARY_TEMPLATE = "【勒索软件攻击】{country_name}金融服务机构{company_name}遭到{group_name}勒索软件组织攻击。该攻击于{discovered}被发现，目标为金融服务行业，可能涉及敏感的客户数据和财务信息。此次攻击再次凸显了金融行业面临的网络安全威胁，相关机构应加强防护措施。"
+VICTIM_SUMMARY_TEMPLATE = "【勒索】{country_name}金融服务机构{company_name}遭到{group_name}勒索软件组织攻击。该攻击于{discovered}被发现，目标为金融服务行业，可能涉及敏感的客户数据和财务信息。此次攻击再次凸显了金融行业面临的网络安全威胁，相关机构应加强防护措施。"
 
 CYBERATTACK_SUMMARY_TEMPLATE = "【网络安全事件】{title}。{date_info}{description_info}此类网络攻击事件提醒各组织需要持续关注网络安全威胁并采取相应防护措施。"
 
@@ -76,7 +76,7 @@ VICTIM_PROMPT_TEMPLATE = """请为以下勒索软件攻击事件生成一段简�
 描述：{description}
 
 要求：
-1. 使用【勒索软件攻击】开头
+1. 使用【勒索】开头
 2. 突出地区、行业、受害者和攻击组织信息
 3. 强调网络安全威胁的严重性
 4. 语言简洁专业，适合新闻报道
