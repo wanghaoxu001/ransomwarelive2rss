@@ -477,20 +477,38 @@ class RansomwareRSSService:
 
     def update_data(self):
         """更新数据的定时任务"""
-        logger.info("开始更新勒索软件数据...")
+        start_time = datetime.now()
+        logger.info(f"开始更新勒索软件数据... (时间: {start_time.isoformat()})")
 
-        # 获取受害者数据
-        victims_data = self.fetch_recent_victims()
-        if victims_data:
-            filtered_victims = self.filter_china_financial_victims(victims_data)
-            self.save_new_victims(filtered_victims)
+        try:
+            # 获取受害者数据
+            logger.info("正在获取受害者数据...")
+            victims_data = self.fetch_recent_victims()
+            if victims_data:
+                logger.info(f"获取到 {len(victims_data)} 条受害者原始数据")
+                filtered_victims = self.filter_china_financial_victims(victims_data)
+                logger.info(f"筛选后的受害者数据: {len(filtered_victims)} 条")
+                saved_victims = self.save_new_victims(filtered_victims)
+                logger.info(f"保存了 {saved_victims} 条新的受害者记录")
+            else:
+                logger.warning("未获取到受害者数据")
 
-        # 获取网络攻击数据
-        attacks_data = self.fetch_recent_cyberattacks()
-        if attacks_data:
-            self.save_new_cyberattacks(attacks_data)
+            # 获取网络攻击数据
+            logger.info("正在获取网络攻击数据...")
+            attacks_data = self.fetch_recent_cyberattacks()
+            if attacks_data:
+                logger.info(f"获取到 {len(attacks_data)} 条网络攻击原始数据")
+                saved_attacks = self.save_new_cyberattacks(attacks_data)
+                logger.info(f"保存了 {saved_attacks} 条新的网络攻击记录")
+            else:
+                logger.warning("未获取到网络攻击数据")
 
-        logger.info("数据更新完成")
+            end_time = datetime.now()
+            duration = (end_time - start_time).total_seconds()
+            logger.info(f"数据更新完成 (耗时: {duration:.2f}秒, 完成时间: {end_time.isoformat()})")
+            
+        except Exception as e:
+            logger.error(f"数据更新过程中发生异常: {e}", exc_info=True)
 
 
 class LLMSummaryGenerator:
@@ -711,20 +729,75 @@ def api_status():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@app.route("/api/scheduler")
+def api_scheduler():
+    """定时任务状态"""
+    try:
+        scheduler_info = {
+            "jobs_count": len(schedule.jobs),
+            "jobs": []
+        }
+        
+        for job in schedule.jobs:
+            job_info = {
+                "interval": job.interval,
+                "unit": job.unit,
+                "next_run": job.next_run.isoformat() if job.next_run else None,
+                "job_func": str(job.job_func),
+                "last_run": getattr(job, 'last_run', None)
+            }
+            scheduler_info["jobs"].append(job_info)
+        
+        return jsonify({
+            "status": "success",
+            "scheduler_info": scheduler_info,
+            "current_time": datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"获取定时任务状态失败: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 def run_scheduler():
     """运行定时任务"""
+    logger.info("定时任务线程启动")
+    
     # 根据配置设置更新间隔
     if UPDATE_INTERVAL_HOURS == 1:
         schedule.every().hour.do(rss_service.update_data)
+        logger.info("定时任务配置：每小时执行一次")
     else:
         schedule.every(UPDATE_INTERVAL_HOURS).hours.do(rss_service.update_data)
+        logger.info(f"定时任务配置：每{UPDATE_INTERVAL_HOURS}小时执行一次")
 
     # 启动时立即执行一次更新
-    rss_service.update_data()
+    logger.info("执行启动时的初始数据更新")
+    try:
+        rss_service.update_data()
+        logger.info("初始数据更新完成")
+    except Exception as e:
+        logger.error(f"初始数据更新失败: {e}")
 
+    logger.info("开始定时任务循环")
+    loop_count = 0
     while True:
-        schedule.run_pending()
-        time.sleep(60)  # 每分钟检查一次
+        try:
+            loop_count += 1
+            if loop_count % 60 == 0:  # 每小时记录一次心跳
+                logger.info(f"定时任务线程运行正常，循环次数: {loop_count}")
+            
+            # 检查是否有待执行的任务
+            pending_jobs = schedule.jobs
+            if pending_jobs:
+                next_run = min(job.next_run for job in pending_jobs) if pending_jobs else None
+                if loop_count % 60 == 0:  # 每小时记录一次
+                    logger.info(f"下次执行时间: {next_run}")
+            
+            schedule.run_pending()
+            time.sleep(60)  # 每分钟检查一次
+        except Exception as e:
+            logger.error(f"定时任务循环异常: {e}")
+            time.sleep(60)
 
 
 if __name__ == "__main__":
