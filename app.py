@@ -313,7 +313,17 @@ class RansomwareRSSService:
                 continue
 
             try:
+                # 生成摘要
                 summary = self.generate_victim_summary(victim)
+                
+                # 生成智能标题
+                llm_title = self.llm_generator.generate_victim_title(victim)
+                if llm_title:
+                    title = llm_title
+                    logger.debug(f"使用LLM生成受害者标题: {title}")
+                else:
+                    title = victim.get("victim", "")  # 回退到原始标题
+                    logger.debug(f"使用原始受害者标题: {title}")
 
                 # 使用INSERT OR IGNORE避免重复插入
                 cursor.execute(
@@ -323,7 +333,7 @@ class RansomwareRSSService:
                 """,
                     (
                         url,
-                        victim.get("victim", ""),  # v2使用victim字段作为title
+                        title,
                         victim.get("country", ""),
                         victim.get("activity", ""),
                         victim.get("group", ""),  # v2使用group字段
@@ -361,7 +371,17 @@ class RansomwareRSSService:
                 continue
 
             try:
+                # 生成摘要
                 summary = self.generate_cyberattack_summary(attack)
+                
+                # 生成智能标题
+                llm_title = self.llm_generator.generate_cyberattack_title(attack)
+                if llm_title:
+                    title = llm_title
+                    logger.debug(f"使用LLM生成网络攻击标题: {title}")
+                else:
+                    title = attack.get("title", "")  # 回退到原始标题
+                    logger.debug(f"使用原始网络攻击标题: {title}")
 
                 # 使用INSERT OR IGNORE避免重复插入
                 cursor.execute(
@@ -371,7 +391,7 @@ class RansomwareRSSService:
                 """,
                     (
                         url,
-                        attack.get("title", ""),
+                        title,
                         attack.get("date", ""),
                         attack.get("description", ""),
                         summary,
@@ -447,16 +467,21 @@ class RansomwareRSSService:
         for item in news_items:
             fe = fg.add_entry()
 
-            # 根据类型设置标题前缀
-            if item["type"] == "victim":
-                title_prefix = "【勒索】"
-                if item["country"]:
-                    country_name = COUNTRY_NAMES.get(item["country"], item["country"])
-                    title_prefix += f"[{country_name}] "
+            # 如果启用了LLM标题生成，直接使用生成的标题，否则使用传统格式
+            if self.llm_generator.title_enabled:
+                # LLM已经生成了完整的标题，直接使用
+                fe.title(item['title'])
             else:
-                title_prefix = "【网络安全事件】"
+                # 使用传统的前缀格式
+                if item["type"] == "victim":
+                    title_prefix = "【勒索】"
+                    if item["country"]:
+                        country_name = COUNTRY_NAMES.get(item["country"], item["country"])
+                        title_prefix += f"[{country_name}] "
+                else:
+                    title_prefix = "【网络安全事件】"
+                fe.title(f"{title_prefix}{item['title']}")
 
-            fe.title(f"{title_prefix}{item['title']}")
             fe.link(href=item["url"])
             fe.description(item["summary"])
             fe.guid(item["url"])
@@ -512,11 +537,12 @@ class RansomwareRSSService:
 
 
 class LLMSummaryGenerator:
-    """LLM摘要生成器"""
+    """LLM摘要和标题生成器"""
 
     def __init__(self):
         self.client = None
         self.enabled = False
+        self.title_enabled = False
         self.init_llm_client()
 
     def init_llm_client(self):
@@ -534,10 +560,13 @@ class LLMSummaryGenerator:
         try:
             self.client = OpenAI(api_key=api_key, base_url=LLM_BASE_URL)
             self.enabled = True
+            self.title_enabled = LLM_TITLE_ENABLED
             logger.info(f"LLM客户端初始化成功，使用模型: {LLM_MODEL}")
+            logger.info(f"LLM标题生成: {'已启用' if self.title_enabled else '已禁用'}")
         except Exception as e:
             logger.error(f"LLM客户端初始化失败: {e}")
             self.enabled = False
+            self.title_enabled = False
 
     def generate_summary(self, prompt):
         """使用LLM生成摘要"""
@@ -566,6 +595,65 @@ class LLMSummaryGenerator:
         except Exception as e:
             logger.error(f"LLM生成摘要失败: {e}")
             return None
+
+    def generate_title(self, prompt):
+        """使用LLM生成标题"""
+        if not self.enabled or not self.client or not self.title_enabled:
+            return None
+
+        try:
+            response = self.client.chat.completions.create(
+                model=LLM_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "你是一个专业的新闻标题编辑，擅长创作吸引人且准确的中文新闻标题。",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=100,  # 标题较短，减少token使用
+                temperature=LLM_TEMPERATURE,
+                timeout=LLM_TIMEOUT,
+            )
+
+            title = response.choices[0].message.content.strip()
+            logger.debug(f"LLM生成标题成功: {title}")
+            return title
+
+        except Exception as e:
+            logger.error(f"LLM生成标题失败: {e}")
+            return None
+
+    def generate_victim_title(self, victim):
+        """为受害者事件生成标题"""
+        if not self.title_enabled:
+            return None
+
+        # 构建提示词
+        country_name = COUNTRY_NAMES.get(victim.get("country", ""), victim.get("country", ""))
+        prompt = VICTIM_TITLE_PROMPT_TEMPLATE.format(
+            victim=victim.get("victim", "未知"),
+            country=country_name,
+            activity=victim.get("activity", ""),
+            group=victim.get("group", ""),
+            discovered=victim.get("discovered", "")
+        )
+        
+        return self.generate_title(prompt)
+
+    def generate_cyberattack_title(self, attack):
+        """为网络攻击事件生成标题"""
+        if not self.title_enabled:
+            return None
+
+        # 构建提示词
+        prompt = CYBERATTACK_TITLE_PROMPT_TEMPLATE.format(
+            title=attack.get("title", ""),
+            date=attack.get("date", ""),
+            description=attack.get("description", "")
+        )
+        
+        return self.generate_title(prompt)
 
 
 # 创建服务实例
@@ -602,6 +690,7 @@ def index():
             <li>筛选中国地区（{', '.join(CHINA_COUNTRY_CODES)}）受害者或全球{TARGET_ACTIVITY}行业受害者</li>
             <li>收集全球网络攻击事件信息</li>
             <li>{'使用LLM智能生成中文新闻摘要' if LLM_ENABLED and rss_service.llm_generator.enabled else '使用固定模板生成中文新闻摘要'}</li>
+            <li>{'使用LLM智能生成新闻标题' if rss_service.llm_generator.title_enabled else '使用固定格式生成新闻标题'}</li>
             <li>通过RSS格式输出威胁情报</li>
         </ul>
         
@@ -609,6 +698,7 @@ def index():
             <h3>当前配置</h3>
             <ul>
                 <li>LLM摘要生成: {'✓ 已启用 (' + LLM_MODEL + ')' if LLM_ENABLED and rss_service.llm_generator.enabled else '✗ 已禁用（使用固定模板）'}</li>
+                <li>LLM标题生成: {'✓ 已启用' if rss_service.llm_generator.title_enabled else '✗ 已禁用（使用固定格式）'}</li>
                 <li>更新频率: 每{UPDATE_INTERVAL_HOURS}小时</li>
                 <li>RSS最大条目: {RSS_MAX_ITEMS}</li>
             </ul>
