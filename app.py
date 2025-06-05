@@ -473,14 +473,14 @@ class RansomwareRSSService:
                 fe.title(item['title'])
             else:
                 # 使用传统的前缀格式
-            if item["type"] == "victim":
-                title_prefix = "【勒索】"
-                if item["country"]:
-                    country_name = COUNTRY_NAMES.get(item["country"], item["country"])
-                    title_prefix += f"[{country_name}] "
-            else:
-                title_prefix = "【网络安全事件】"
-            fe.title(f"{title_prefix}{item['title']}")
+                if item["type"] == "victim":
+                    title_prefix = "【勒索】"
+                    if item["country"]:
+                        country_name = COUNTRY_NAMES.get(item["country"], item["country"])
+                        title_prefix += f"[{country_name}] "
+                else:
+                    title_prefix = "【网络安全事件】"
+                fe.title(f"{title_prefix}{item['title']}")
 
             fe.link(href=item["url"])
             fe.description(item["summary"])
