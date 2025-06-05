@@ -96,6 +96,53 @@ docker compose logs -f
 docker compose down
 ```
 
+#### 代码更新后重新部署
+
+当代码更新后，使用以下方法让最新代码生效：
+
+**方法一：使用部署脚本（推荐）**
+```bash
+# 完整重新部署（重新构建镜像）
+./deploy.sh
+```
+
+**方法二：使用快速重启脚本**
+```bash
+# 快速重启（不重新构建）
+./restart.sh
+```
+
+**方法三：使用Makefile命令（推荐）**
+```bash
+# 查看所有可用命令
+make help
+
+# 代码更新后完整重新部署
+make deploy
+
+# 快速重启服务
+make restart
+
+# 查看服务状态
+make status
+
+# 查看实时日志
+make logs
+```
+
+**方法四：手动命令**
+```bash
+# 停止服务
+docker compose down
+
+# 重新构建并启动
+docker compose up -d --build
+
+# 或者强制重新构建
+docker compose build --no-cache
+docker compose up -d
+```
+
 #### 使用Docker
 ```bash
 # 构建镜像
@@ -104,7 +151,7 @@ docker build -t ransomware-rss .
 # 运行容器
 docker run -d \
   --name ransomware-rss \
-  -p 15000:15000 \
+  -p 8080:8080 \
   -v $(pwd)/data:/app/data \
   ransomware-rss
 
@@ -112,7 +159,7 @@ docker run -d \
 docker logs -f ransomware-rss
 ```
 
-服务将在 `http://localhost:15000` 启动。
+服务将在 `http://localhost:8080` 启动。
 
 ## API端点
 
@@ -144,7 +191,7 @@ GET /api/status
 
 将以下地址添加到您的RSS阅读器：
 ```
-http://localhost:15000/rss
+http://localhost:8080/rss
 ```
 
 ## 测试服务
@@ -213,7 +260,7 @@ cp config.template.py config.py
 
 #### 服务器配置
 - `HOST`: 服务器监听地址（默认：0.0.0.0）
-- `PORT`: 服务器监听端口（默认：15000）
+- `PORT`: 服务器监听端口（默认：8080）
 - `DEBUG`: 是否启用调试模式
 
 #### 数据更新配置
@@ -261,7 +308,7 @@ DATABASE_PATH = "ransomware_data.db"
 
 # 服务器配置
 HOST = "0.0.0.0"
-PORT = 15000
+PORT = 8080
 DEBUG = False
 ```
 

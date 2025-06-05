@@ -24,7 +24,7 @@ def demo_api_status():
     """演示API状态"""
     print_section("服务状态")
     try:
-        response = requests.get("http://localhost:15000/api/status", timeout=5)
+        response = requests.get("http://localhost:8080/api/status", timeout=5)
         if response.status_code == 200:
             data = response.json()
             print(f"✓ 服务状态: {data['status']}")
@@ -45,7 +45,7 @@ def demo_news_data():
     """演示新闻数据"""
     print_section("最新威胁情报数据")
     try:
-        response = requests.get("http://localhost:15000/api/news", timeout=5)
+        response = requests.get("http://localhost:8080/api/news", timeout=5)
         if response.status_code == 200:
             data = response.json()
             print(f"✓ 获取到 {data['count']} 条威胁情报")
@@ -70,7 +70,7 @@ def demo_rss_feed():
     """演示RSS feed"""
     print_section("RSS Feed")
     try:
-        response = requests.get("http://localhost:15000/rss", timeout=5)
+        response = requests.get("http://localhost:8080/rss", timeout=5)
         if response.status_code == 200:
             content = response.text
             print(f"✓ RSS Feed 生成成功")
@@ -94,7 +94,7 @@ def demo_manual_update():
     print_section("手动数据更新")
     try:
         print("正在触发手动更新...")
-        response = requests.post("http://localhost:15000/api/update", timeout=30)
+        response = requests.post("http://localhost:8080/api/update", timeout=30)
         if response.status_code == 200:
             data = response.json()
             print(f"✓ 更新成功: {data['message']}")
@@ -107,7 +107,7 @@ def demo_manual_update():
 def check_service():
     """检查服务是否运行"""
     try:
-        response = requests.get("http://localhost:15000/", timeout=3)
+        response = requests.get("http://localhost:8080/", timeout=3)
         return response.status_code == 200
     except:
         return False
@@ -133,8 +133,8 @@ def main():
     demo_manual_update()
 
     print_header("演示完成")
-    print("RSS订阅地址: http://localhost:15000/rss")
-    print("Web界面: http://localhost:15000/")
+    print("RSS订阅地址: http://localhost:8080/rss")
+    print("Web界面: http://localhost:8080/")
     print("筛选规则: 中国地区受害者 或 全球金融服务行业受害者")
     print("API文档: 查看README.md")
 

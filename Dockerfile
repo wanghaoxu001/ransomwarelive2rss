@@ -28,11 +28,11 @@ RUN mkdir -p /app/data
 ENV DATABASE_PATH=/app/data/ransomware_data.db
 
 # 暴露端口
-EXPOSE 15000
+EXPOSE 8080
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:15000/api/status || exit 1
+    CMD curl -f http://localhost:8080/api/status || exit 1
 
 # 启动应用
 CMD ["python", "app.py"] 

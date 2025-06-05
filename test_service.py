@@ -81,7 +81,7 @@ def test_json_api(url):
 
 def main():
     """主测试函数"""
-    base_url = "http://localhost:15000"
+    base_url = "http://localhost:8080"
 
     print("勒索软件威胁情报RSS服务测试")
     print("=" * 40)

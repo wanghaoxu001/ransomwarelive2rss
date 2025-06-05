@@ -133,10 +133,10 @@ def show_testing_guide():
     print("   python app.py")
 
     print("\n3. 检查服务状态:")
-    print("   curl http://localhost:15000/api/status")
+    print("   curl http://localhost:8080/api/status")
 
     print("\n4. 查看摘要效果:")
-    print("   curl http://localhost:15000/api/news")
+    print("   curl http://localhost:8080/api/news")
 
     print("\n5. 监控日志:")
     print("   服务日志会显示摘要生成方式:")

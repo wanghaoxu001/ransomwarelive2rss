@@ -33,8 +33,8 @@ fi
 
 # 启动服务
 echo "正在启动勒索软件威胁情报RSS服务..."
-echo "服务地址: http://localhost:15000"
-echo "RSS订阅地址: http://localhost:15000/rss"
+echo "服务地址: http://localhost:8080"
+echo "RSS订阅地址: http://localhost:8080/rss"
 echo "按 Ctrl+C 停止服务"
 echo ""
 

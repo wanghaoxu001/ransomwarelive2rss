@@ -1,30 +1,31 @@
-version: '3.8'
-
 services:
-  ransomware-rss:
+  ransomware2rss:
     build: .
-    container_name: ransomware-rss-service
+    container_name: ransomware2rss-service
     ports:
-      - "15000:15000"
+      - "8080:8080"
     volumes:
       - ./data:/app/data
     environment:
       - DATABASE_PATH=/app/data/ransomware_data.db
       - HOST=0.0.0.0
-      - PORT=15000
+      - PORT=8080
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:15000/api/status"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/status"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
     networks:
       - ransomware-network
+      - nginx-proxy-manager_npm_network
 
 networks:
   ransomware-network:
     driver: bridge
+  nginx-proxy-manager_npm_network:
+    external: true
 
 volumes:
   ransomware-data:
